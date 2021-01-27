@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 load("//base:distro.bzl", "DISTRO_PACKAGES", "DISTRO_SUFFIXES")
-load("@io_bazel_rules_docker//container:container.bzl", "container_image")
+load("@io_bazel_rules_docker//container:container.bzl", "container_image", "container_push")
 load("@io_bazel_rules_docker//contrib:test.bzl", "container_test")
 load("//:checksums.bzl", ARCHITECTURES = "BASE_ARCHITECTURES")
 load("//base:base.bzl", "NONROOT")
@@ -67,6 +67,23 @@ DISTRO_DEBS = {
         base = ("erlang" if (not mode) else mode[1:]) + "_root_" + arch + distro_suffix,
         user = "%d" % NONROOT,
         workdir = "/home/nonroot",
+    )
+    for mode in [
+        "",
+        ":debug",
+    ]
+    for arch in ARCHITECTURES
+    for distro_suffix in DISTRO_SUFFIXES
+]
+
+[
+    container_push(
+        name = "push_" + ("erlang" if (not mode) else mode[1:]) + "_root_" + arch + distro_suffix,
+        format = "Docker",
+        image = ("erlang" if (not mode) else mode[1:]) + "_root_" + arch + distro_suffix,
+        registry = "index.docker.io",
+        repository = "hazyai/distroless-erlang",
+        tag = ("latest" if (not mode) else mode[1:]),
     )
     for mode in [
         "",
