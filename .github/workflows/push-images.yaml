@@ -17,6 +17,12 @@ jobs:
       with:
         version: 3.4.1
 
+    - name: Install python3
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9.1' # Version range or exact version of a Python version to use, using SemVer's version range syntax
+        architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
+
     - name: Build dpkg_parser
       run: bazel build //package_manager:dpkg_parser.par
 
