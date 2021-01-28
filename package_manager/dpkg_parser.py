@@ -129,8 +129,8 @@ def download_dpkg(package_files, packages, workspace_name, versionsfile):
             f.write('\n')
 
 def download_and_save(pkg_key, url, out_file, retry_count=20):
-    # pylint: disable=unexpected-keyword-arg
-    req = urllib.request.Request(url, method="HEAD")
+    req = urllib.request.Request(url)
+    req.get_method = lambda: 'HEAD'
     res = urllib.request.urlopen(req)
     total_bytes = int(res.info().get("Content-Length"))
     range_access_enabled = "bytes" in res.info().get("Accept-Ranges")
