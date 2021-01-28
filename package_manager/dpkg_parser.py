@@ -129,6 +129,48 @@ def download_dpkg(package_files, packages, workspace_name, versionsfile):
             f.write('\n')
 
 def download_and_save(pkg_key, url, out_file, retry_count=20):
+    # pylint: disable=unexpected-keyword-arg
+    req = urllib.request.Request(url, method="HEAD")
+    res = urllib.request.urlopen(req)
+    total_bytes = int(res.info().get("Content-Length"))
+    range_access_enabled = "bytes" in res.info().get("Accept-Ranges")
+
+    chunk_size = 1024 * 1024
+
+    if not range_access_enabled:
+        raise Exception("Fail to download %s (%s). Server returned partial contents." %(pkg_key, url))
+
+    contents = []
+    downloaded_bytes = 0
+
+    for (start, end) in [(o, min(o + chunk_size - 1, total_bytes - 1)) for o in range(0, total_bytes, chunk_size)]:
+        retries = retry_count
+
+        while True:
+            retries -= 1
+
+            if retries <= 0:
+                raise Exception("Fail to download %s (%s). %d-%d" %(pkg_key, url, start, end))
+
+            req = urllib.request.Request(url, headers={"Range": "bytes=%d-%d" % (start, end)})
+            res = urllib.request.urlopen(req)
+
+            downloaded = res.read()
+            downloaded_bytes += len(downloaded)
+            expected_length = end - start + 1
+
+            if res.getcode() in [200, 206] and len(downloaded) == expected_length:
+                contents.append(downloaded)
+                break
+
+    if downloaded_bytes != total_bytes:
+        raise Exception("Downloaded size of %d does not match expected %d: %s (%s)" % (downloaded_bytes, total_bytes, pkg_key, url))
+
+    with io.open(out_file, 'wb') as f:
+        for c in contents:
+            f.write(c)
+
+def download_and_save_ORIG(pkg_key, url, out_file, retry_count=20):
     res = urllib.request.urlopen(url)
     remaining_bytes = int(res.info().get("Content-Length"))
     downloaded = res.read()

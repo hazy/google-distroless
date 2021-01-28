@@ -2,6 +2,7 @@
 
 set -o errexit
 set -o xtrace
+set -o pipefail
 
 cp checksums.bzl checksums.bzl~
 cp package_bundle_amd64_debian9.versions package_bundle_amd64_debian9.versions~
@@ -133,17 +134,17 @@ EOF
 # Rebuild package set
 
 bazel clean
-until bazel build --host_force_python=PY2 //package_manager:dpkg_parser.par; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_amd64_debian9//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_amd64_debian10//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_arm_debian9//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_arm_debian10//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_arm64_debian9//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_arm64_debian10//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_s390x_debian9//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_s390x_debian10//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_ppc64le_debian9//file:packages.bzl; do sleep 2; done
-until bazel build --host_force_python=PY2 @package_bundle_ppc64le_debian10//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 //package_manager:dpkg_parser.par; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_amd64_debian9//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_amd64_debian10//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_arm_debian9//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_arm_debian10//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_arm64_debian9//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_arm64_debian10//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_s390x_debian9//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_s390x_debian10//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_ppc64le_debian9//file:packages.bzl; do sleep 2; done
+until bazel build --host_force_python=PY3 @package_bundle_ppc64le_debian10//file:packages.bzl; do sleep 2; done
 
 # Check if any of the version lock files are updated
 
