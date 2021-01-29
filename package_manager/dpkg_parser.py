@@ -17,6 +17,8 @@ import gzip
 import json
 import os
 import io
+import time
+import http
 
 from six.moves import urllib
 
@@ -129,16 +131,31 @@ def download_dpkg(package_files, packages, workspace_name, versionsfile):
             f.write('\n')
 
 def download_and_save(pkg_key, url, out_file, retry_count=20):
-    req = urllib.request.Request(url)
-    req.get_method = lambda: 'HEAD'
-    res = urllib.request.urlopen(req)
-    total_bytes = int(res.info().get("Content-Length"))
-    range_access_enabled = "bytes" in res.info().get("Accept-Ranges")
+    def _download_throttle(f):
+        start_time = time.time()
+        result = f()
+        seconds_per_request = 1.5
+        sleep_time = seconds_per_request - (time.time() - start_time)
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
-    chunk_size = 1024 * 1024
+        return result
 
-    if not range_access_enabled:
-        raise Exception("Fail to download %s (%s). Server returned partial contents." %(pkg_key, url))
+    def __head():
+        req = urllib.request.Request(url)
+        req.get_method = lambda: 'HEAD'
+        res = urllib.request.urlopen(req)
+        total_bytes = int(res.info().get("Content-Length"))
+        range_access_enabled = "bytes" in res.info().get("Accept-Ranges")
+        if not range_access_enabled:
+            raise Exception("Fail to download %s (%s). Server returned partial contents." %(pkg_key, url))
+        return total_bytes
+
+    total_bytes = _download_throttle(__head)
+
+    # most files are smaller than this so overall we're not making an excessive
+    # number of requests
+    chunk_size = 10 * 1024 * 1024
 
     contents = []
     downloaded_bytes = 0
@@ -152,16 +169,28 @@ def download_and_save(pkg_key, url, out_file, retry_count=20):
             if retries <= 0:
                 raise Exception("Fail to download %s (%s). %d-%d" %(pkg_key, url, start, end))
 
-            req = urllib.request.Request(url, headers={"Range": "bytes=%d-%d" % (start, end)})
-            res = urllib.request.urlopen(req)
+            def __get(_start, _end):
+                def __do_get():
+                    req = urllib.request.Request(url, headers={"Range": "bytes=%d-%d" % (_start, _end)})
+                    res = urllib.request.urlopen(req)
+                    downloaded = res.read()
+                    status_code = res.getcode()
 
-            downloaded = res.read()
-            downloaded_bytes += len(downloaded)
-            expected_length = end - start + 1
+                    return (downloaded, status_code)
+                return __do_get
 
-            if res.getcode() in [200, 206] and len(downloaded) == expected_length:
-                contents.append(downloaded)
-                break
+            try:
+                (downloaded, status_code) = _download_throttle(__get(start, end))
+
+                downloaded_bytes += len(downloaded)
+                expected_length = end - start + 1
+
+                if status_code in [200, 206] and len(downloaded) == expected_length:
+                    contents.append(downloaded)
+                    break
+            except http.client.IncompleteRead:
+                time.sleep(retry_count - retries)
+
 
     if downloaded_bytes != total_bytes:
         raise Exception("Downloaded size of %d does not match expected %d: %s (%s)" % (downloaded_bytes, total_bytes, pkg_key, url))
