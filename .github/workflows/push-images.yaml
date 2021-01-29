@@ -28,6 +28,7 @@ jobs:
 
     - name: Build Erlang images
       run: |
+        until bazel build @package_bundle_amd64_debian10//file:packages.bzl; do sleep 2; done
         bazel run experimental/erlang:erlang_root_amd64_debian10
         bazel run experimental/erlang:debug_root_amd64_debian10
 
